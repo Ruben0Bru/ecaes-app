@@ -24,7 +24,18 @@ export default function LoginPage() {
       });
 
       if (error) {
-        toast.error("Error al iniciar sesión: " + error.message);
+        console.error("Error de Supabase:", error);
+
+        // Mensajes más amigables
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Correo o contraseña incorrectos. Verifica tus datos.");
+        } else if (error.message.includes("Email not confirmed")) {
+          toast.error(
+            "Debes confirmar tu correo electrónico antes de iniciar sesión"
+          );
+        } else {
+          toast.error("Error al iniciar sesión: " + error.message);
+        }
         return;
       }
 
@@ -33,8 +44,9 @@ export default function LoginPage() {
         router.push("/home");
         router.refresh();
       }
-    } catch (error) {
-      toast.error("Ocurrió un error inesperado");
+    } catch (error: any) {
+      console.error("Error inesperado:", error);
+      toast.error("Ocurrió un error inesperado. Por favor intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -74,14 +86,14 @@ export default function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-gray-300"
             >
-              Your Password
+              Contraseña
             </label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
+              placeholder="Tu contraseña"
               required
               className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -92,22 +104,24 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-3 bg-[#22c55e] hover:bg-[#16a34a] text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Cargando..." : "Entrar o registrarse"}
+            {loading ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
 
           <div className="space-y-2 text-center">
             <Link
-              href="/forgot-password"
-              className="block text-sm text-gray-400 hover:text-gray-300 underline"
-            >
-              Forgot your password?
-            </Link>
-            <Link
               href="/register"
               className="block text-sm text-gray-400 hover:text-gray-300 underline"
             >
-              Don&apos;t have an account? Sign up
+              ¿No tienes cuenta? Regístrate aquí
             </Link>
+          </div>
+
+          {/* Info de prueba */}
+          <div className="mt-6 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+            <p className="text-xs text-blue-300 text-center">
+              💡 <strong>Primera vez:</strong> Haz clic en "Regístrate aquí"
+              para crear tu cuenta
+            </p>
           </div>
         </form>
       </div>

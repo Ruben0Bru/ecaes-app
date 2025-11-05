@@ -22,8 +22,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Si hay sesión y está intentando acceder al login
-  if (session && req.nextUrl.pathname === "/login") {
+  // Si hay sesión y está intentando acceder al login o registro
+  if (
+    session &&
+    (req.nextUrl.pathname === "/login" || req.nextUrl.pathname === "/register")
+  ) {
     const redirectUrl = new URL("/home", req.url);
     return NextResponse.redirect(redirectUrl);
   }
