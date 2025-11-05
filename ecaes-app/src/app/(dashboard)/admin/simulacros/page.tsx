@@ -49,19 +49,50 @@ export default function AdminSimulacrosPage() {
 
       if (!user) return;
 
-      const { error } = await supabase.from("simulacros").insert({
-        ...formData,
-        creado_por: user.id,
-        activo: true,
-      });
+      // Crear simulacro
+      const { data: simulacro, error: simulacroError } = await supabase
+        .from("simulacros")
+        .insert({
+          ...formData,
+          creado_por: user.id,
+          activo: true,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (simulacroError) throw simulacroError;
 
-      toast.success("Simulacro creado exitosamente");
+      // Crear automáticamente las 5 áreas del ICFES
+      const areasICFES = [
+        { nombre: "Lectura Crítica", orden: 1 },
+        { nombre: "Razonamiento Cuantitativo", orden: 2 },
+        { nombre: "Inglés", orden: 3 },
+        { nombre: "Competencias Ciudadanas", orden: 4 },
+        { nombre: "Comunicación Escrita", orden: 5 },
+      ];
+
+      const areasToInsert = areasICFES.map((area) => ({
+        simulacro_id: simulacro.id,
+        nombre: area.nombre,
+        peso: 1.0,
+        orden: area.orden,
+      }));
+
+      const { error: areasError } = await supabase
+        .from("areas")
+        .insert(areasToInsert);
+
+      if (areasError) {
+        console.error("Error al crear áreas:", areasError);
+        // No lanzamos error aquí para no bloquear la creación
+      }
+
+      toast.success("Simulacro creado exitosamente con las 5 áreas ICFES");
       setShowModal(false);
       setFormData({ nombre: "", descripcion: "", duracion_minutos: 60 });
       loadSimulacros();
     } catch (error) {
+      console.error("Error:", error);
       toast.error("Error al crear el simulacro");
     }
   };

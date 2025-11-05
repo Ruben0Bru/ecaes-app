@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, BookOpen, BarChart3, User, Settings, Award } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Home,
+  BookOpen,
+  BarChart3,
+  User,
+  Settings,
+  Award,
+  LogOut,
+} from "lucide-react";
+import { createSupabaseClient } from "@/lib/supabase";
+import { toast } from "sonner";
+import { useEffect, useState } from "react";
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -10,6 +21,45 @@ interface SidebarProps {
 
 export default function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [userName, setUserName] = useState("Usuario");
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    loadUserInfo();
+  }, []);
+
+  const loadUserInfo = async () => {
+    const supabase = createSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      setUserEmail(user.email || "");
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.full_name) {
+        setUserName(profile.full_name);
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const supabase = createSupabaseClient();
+      await supabase.auth.signOut();
+      toast.success("Sesión cerrada exitosamente");
+      router.push("/login");
+    } catch (error) {
+      toast.error("Error al cerrar sesión");
+    }
+  };
 
   const navItems = [
     { href: "/home", icon: Home, label: "Inicio" },
@@ -33,10 +83,11 @@ export default function Sidebar({ isAdmin = false }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (
             <Link
@@ -57,15 +108,24 @@ export default function Sidebar({ isAdmin = false }: SidebarProps) {
 
       {/* User Info */}
       <div className="p-4 border-t border-gray-800">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-            N
+            {userName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Usuario</p>
-            <p className="text-xs text-gray-400">estudiante</p>
+            <p className="text-sm font-medium text-white truncate">
+              {userName}
+            </p>
+            <p className="text-xs text-gray-400 truncate">{userEmail}</p>
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded-lg transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Cerrar sesión</span>
+        </button>
       </div>
     </aside>
   );
