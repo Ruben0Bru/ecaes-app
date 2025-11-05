@@ -25,68 +25,88 @@ export class SimulacroModel {
 
   // Obtener simulacro con sus áreas, items y preguntas
   static async getSimulacroCompleto(simulacroId: string) {
-    // Obtener simulacro
-    const { data: simulacro, error: simulacroError } = await supabase
-      .from("simulacros")
-      .select("*")
-      .eq("id", simulacroId)
-      .single();
+    try {
+      // Obtener simulacro
+      const { data: simulacro, error: simulacroError } = await supabase
+        .from("simulacros")
+        .select("*")
+        .eq("id", simulacroId)
+        .single();
 
-    if (simulacroError) throw simulacroError;
+      if (simulacroError) throw simulacroError;
+      if (!simulacro) return null;
 
-    // Obtener áreas
-    const { data: areas, error: areasError } = await supabase
-      .from("areas")
-      .select("*")
-      .eq("simulacro_id", simulacroId)
-      .order("orden", { ascending: true });
+      // Obtener áreas
+      const { data: areas, error: areasError } = await supabase
+        .from("areas")
+        .select("*")
+        .eq("simulacro_id", simulacroId)
+        .order("orden", { ascending: true });
 
-    if (areasError) throw areasError;
+      if (areasError) throw areasError;
 
-    // Obtener items con sus preguntas y opciones
-    const areasCompletas = await Promise.all(
-      (areas || []).map(async (area) => {
-        const { data: items, error: itemsError } = await supabase
-          .from("items")
-          .select("*")
-          .eq("area_id", area.id)
-          .order("orden", { ascending: true });
+      // Si no hay áreas, devolver simulacro sin áreas
+      if (!areas || areas.length === 0) {
+        return { ...simulacro, areas: [] };
+      }
 
-        if (itemsError) throw itemsError;
+      // Obtener items con sus preguntas y opciones
+      const areasCompletas = await Promise.all(
+        areas.map(async (area) => {
+          const { data: items, error: itemsError } = await supabase
+            .from("items")
+            .select("*")
+            .eq("area_id", area.id)
+            .order("orden", { ascending: true });
 
-        const itemsCompletos = await Promise.all(
-          (items || []).map(async (item) => {
-            const { data: preguntas, error: preguntasError } = await supabase
-              .from("preguntas")
-              .select("*")
-              .eq("item_id", item.id)
-              .order("orden", { ascending: true });
+          if (itemsError) throw itemsError;
 
-            if (preguntasError) throw preguntasError;
+          if (!items || items.length === 0) {
+            return { ...area, items: [] };
+          }
 
-            const preguntasCompletas = await Promise.all(
-              (preguntas || []).map(async (pregunta) => {
-                const { data: opciones, error: opcionesError } = await supabase
-                  .from("opciones")
-                  .select("*")
-                  .eq("pregunta_id", pregunta.id)
-                  .order("orden", { ascending: true });
+          const itemsCompletos = await Promise.all(
+            items.map(async (item) => {
+              const { data: preguntas, error: preguntasError } = await supabase
+                .from("preguntas")
+                .select("*")
+                .eq("item_id", item.id)
+                .order("orden", { ascending: true });
 
-                if (opcionesError) throw opcionesError;
+              if (preguntasError) throw preguntasError;
 
-                return { ...pregunta, opciones: opciones || [] };
-              })
-            );
+              if (!preguntas || preguntas.length === 0) {
+                return { ...item, preguntas: [] };
+              }
 
-            return { ...item, preguntas: preguntasCompletas };
-          })
-        );
+              const preguntasCompletas = await Promise.all(
+                preguntas.map(async (pregunta) => {
+                  const { data: opciones, error: opcionesError } =
+                    await supabase
+                      .from("opciones")
+                      .select("*")
+                      .eq("pregunta_id", pregunta.id)
+                      .order("orden", { ascending: true });
 
-        return { ...area, items: itemsCompletos };
-      })
-    );
+                  if (opcionesError) throw opcionesError;
 
-    return { ...simulacro, areas: areasCompletas };
+                  return { ...pregunta, opciones: opciones || [] };
+                })
+              );
+
+              return { ...item, preguntas: preguntasCompletas };
+            })
+          );
+
+          return { ...area, items: itemsCompletos };
+        })
+      );
+
+      return { ...simulacro, areas: areasCompletas };
+    } catch (error) {
+      console.error("Error en getSimulacroCompleto:", error);
+      throw error;
+    }
   }
 
   // Crear un nuevo intento
